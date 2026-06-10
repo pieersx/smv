@@ -1,0 +1,51 @@
+-- SMV 360 - Medidas DAX sugeridas
+
+Empresas = DISTINCTCOUNT(fact_financial_kpis[rpj])
+
+Sectores = DISTINCTCOUNT(fact_financial_kpis[tipo_sector])
+
+Score Riesgo Promedio = AVERAGE(fact_financial_kpis[score_riesgo])
+
+Empresas Riesgo Alto =
+CALCULATE(
+    DISTINCTCOUNT(fact_financial_kpis[rpj]),
+    fact_financial_kpis[nivel_riesgo] = "Alto"
+)
+
+Activo Total = SUM(fact_financial_kpis[activo_total])
+
+Pasivo Total = SUM(fact_financial_kpis[pasivo_total])
+
+Utilidad Neta = SUM(fact_financial_kpis[utilidad_neta])
+
+ROA Promedio = AVERAGE(fact_financial_kpis[roa])
+
+ROE Promedio = AVERAGE(fact_financial_kpis[roe])
+
+Endeudamiento Promedio = AVERAGE(fact_financial_kpis[endeudamiento])
+
+Margen Neto Promedio = AVERAGE(fact_financial_kpis[margen_neto])
+
+Checks Calidad = COUNTROWS(data_quality_results)
+
+Checks OK =
+CALCULATE(
+    COUNTROWS(data_quality_results),
+    data_quality_results[status] = "pass"
+)
+
+Checks Fallidos =
+CALCULATE(
+    COUNTROWS(data_quality_results),
+    data_quality_results[status] = "fail"
+)
+
+Fuentes Verificadas = DISTINCTCOUNT(source_coverage[source])
+
+Activos SBS = SUM(fact_sbs_financial_system[total_activo])
+
+Ratio Atrasados SBS = AVERAGE(fact_sbs_financial_system[ratio_atrasados])
+
+PBI INEI = SUM(fact_inei_pbi_department[pbi_miles_soles_2007])
+
+Monto MEF = SUM(fact_mef_state_enterprises[monto_total])

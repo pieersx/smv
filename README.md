@@ -93,7 +93,9 @@ Estos archivos permiten sustentar completitud, nulos, duplicados, tipos de datos
 ## Documentacion
 
 - `docs/data_catalog.md`: catalogo de datasets, KPIs y score de riesgo.
+- `docs/explicacion_profesor.md`: explicacion completa del proyecto para sustentacion.
 - `docs/modelo_dimensional.md`: modelo dimensional propuesto.
 - `docs/diccionario_datos.md`: diccionario preliminar del DW.
 - `docs/fuentes.md`: fuentes oficiales.
 - `docs/mapeo_fuente_destino.md`: mapeo fuente-destino.
+- `powerbi/`: paquete para construir el dashboard en Power BI Desktop con medidas DAX, modelo y especificacion visual.
