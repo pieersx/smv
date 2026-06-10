@@ -1,8 +1,38 @@
 # SMV 360 BI
 
-Proyecto BI para construir un dashboard de riesgo financiero corporativo usando datos abiertos oficiales de la SMV y series macroeconomicas del BCRP.
+Proyecto de Inteligencia de Negocios orientado al mercado de valores peruano.
 
-## Capas
+El repositorio integra dos frentes:
+
+- Diseno del Data Warehouse y scripts DDL para PostgreSQL.
+- Pipeline real de datos abiertos SMV/BCRP con capas bronze, silver, gold y dashboard local.
+
+## Estructura
+
+```text
+dashboard/
+  app.py
+
+data/
+  bronze/
+  silver/
+  gold/
+
+docs/
+  data_catalog.md
+  diccionario_datos.md
+  fuentes.md
+  mapeo_fuente_destino.md
+  modelo_dimensional.md
+
+sql/
+  ddl/
+
+src/
+  smv_bi/
+```
+
+## Capas de datos
 
 - `data/bronze`: respuestas crudas descargadas desde fuentes oficiales.
 - `data/silver`: datos normalizados, limpios y listos para cruces.
@@ -17,6 +47,7 @@ Proyecto BI para construir un dashboard de riesgo financiero corporativo usando 
 ## Ejecutar
 
 ```powershell
+pip install -r requirements.txt
 python -m src.smv_bi.run_pipeline
 streamlit run dashboard/app.py
 ```
@@ -36,12 +67,16 @@ La app Streamlit incluye cuatro vistas:
 - Contexto macro BCRP.
 - Tabla gold exportable.
 
-## Documentacion
-
-Ver `docs/data_catalog.md` para el catalogo de datasets, KPIs y definicion del score de riesgo.
-
 ## Alcance actual
 
-El pipeline descarga 2019-2024 para informacion financiera individual de la SMV, calcula ratios financieros, arma un score de riesgo y genera tablas gold para el dashboard.
+El pipeline descarga datos 2019-2024 de informacion financiera individual de la SMV, calcula ratios financieros, arma un score de riesgo y genera tablas gold para el dashboard.
 
-La BVL y SBS quedan como ampliacion recomendada despues de estabilizar la primera version, porque SMV + BCRP ya cubren un caso BI completo y defendible.
+La BVL y SBS quedan como ampliacion recomendada despues de estabilizar esta primera version, porque SMV + BCRP ya cubren un caso BI completo y defendible.
+
+## Documentacion
+
+- `docs/data_catalog.md`: catalogo de datasets, KPIs y score de riesgo.
+- `docs/modelo_dimensional.md`: modelo dimensional propuesto.
+- `docs/diccionario_datos.md`: diccionario preliminar del DW.
+- `docs/fuentes.md`: fuentes oficiales.
+- `docs/mapeo_fuente_destino.md`: mapeo fuente-destino.
