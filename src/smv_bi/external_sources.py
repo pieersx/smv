@@ -20,6 +20,23 @@ from .config import (
 )
 
 
+MONTH_ES = {
+    "Ene": 1,
+    "Feb": 2,
+    "Mar": 3,
+    "Abr": 4,
+    "May": 5,
+    "Jun": 6,
+    "Jul": 7,
+    "Ago": 8,
+    "Set": 9,
+    "Sep": 9,
+    "Oct": 10,
+    "Nov": 11,
+    "Dic": 12,
+}
+
+
 class SimpleTableParser(HTMLParser):
     def __init__(self) -> None:
         super().__init__()
@@ -141,6 +158,76 @@ def download_sbs() -> list[dict]:
     return results
 
 
+def parse_sbs_period(value: str) -> pd.Timestamp:
+    try:
+        month_text, year_text = str(value).split("-")
+        month = MONTH_ES.get(month_text.strip(), 1)
+        year = int(year_text)
+        return pd.Timestamp(year=year, month=month, day=1) + pd.offsets.MonthEnd(0)
+    except Exception:
+        return pd.NaT
+
+
+def to_numeric_columns(df: pd.DataFrame, columns: list[str]) -> pd.DataFrame:
+    for column in columns:
+        if column in df.columns:
+            df[column] = pd.to_numeric(df[column], errors="coerce")
+    return df
+
+
+def build_sbs_silver() -> int:
+    esf_path = (
+        BRONZE_DIR
+        / "sbs"
+        / "sistema_financiero_estado_situacion"
+        / "ESF_SF"
+        / "dataset_sf_esf.csv"
+    )
+    er_path = (
+        BRONZE_DIR
+        / "sbs"
+        / "sistema_financiero_estado_resultados"
+        / "ER_SF"
+        / "dataset_sf_er.csv"
+    )
+    esf = pd.read_csv(esf_path)
+    er = pd.read_csv(er_path)
+
+    esf_cols = [
+        "PERIODO",
+        "ENTIDAD",
+        "TOTAL_ACTIVO",
+        "TOTAL_PASIVO",
+        "PATRIMONIO",
+        "CREDITOS",
+        "ATRASADOS",
+        "VENCIDOS",
+        "EN_COBRANZA_JUDICIAL",
+    ]
+    er_cols = [
+        "PERIODO",
+        "ENTIDAD",
+        "MARGEN_FINANCIERO_BRUTO",
+        "MARGEN_FINANCIERO_NETO",
+        "RESULTADO_NETO_DEL_EJERCICIO",
+    ]
+    esf = esf[[column for column in esf_cols if column in esf.columns]].copy()
+    er = er[[column for column in er_cols if column in er.columns]].copy()
+    esf = to_numeric_columns(esf, [column for column in esf.columns if column not in {"PERIODO", "ENTIDAD"}])
+    er = to_numeric_columns(er, [column for column in er.columns if column not in {"PERIODO", "ENTIDAD"}])
+
+    sbs = esf.merge(er, on=["PERIODO", "ENTIDAD"], how="outer")
+    sbs["fecha"] = sbs["PERIODO"].map(parse_sbs_period)
+    sbs["anio"] = sbs["fecha"].dt.year
+    sbs["mes"] = sbs["fecha"].dt.month
+    sbs["ratio_atrasados"] = sbs["ATRASADOS"] / sbs["CREDITOS"].replace({0: pd.NA})
+    sbs["roa_sbs"] = sbs["RESULTADO_NETO_DEL_EJERCICIO"] / sbs["TOTAL_ACTIVO"].replace({0: pd.NA})
+    sbs["roe_sbs"] = sbs["RESULTADO_NETO_DEL_EJERCICIO"] / sbs["PATRIMONIO"].replace({0: pd.NA})
+    sbs.columns = [column.lower() for column in sbs.columns]
+    sbs.to_csv(SILVER_DIR / "sbs_financial_system_kpis.csv", index=False, encoding="utf-8-sig")
+    return len(sbs)
+
+
 def download_inei() -> dict:
     path = BRONZE_DIR / "inei" / "pbi" / "pbi_peru_16.xlsx"
     meta = download_file(INEI_PBI_PERU_URL, path)
@@ -173,6 +260,54 @@ def download_inei() -> dict:
     }
 
 
+def clean_year(value) -> int | None:
+    text = str(value).replace("P/", "").replace("E/", "").replace(".0", "").strip()
+    try:
+        return int(float(text))
+    except ValueError:
+        return None
+
+
+def extract_inei_table(path: Path, sheet_name: str, value_name: str) -> pd.DataFrame:
+    raw = pd.read_excel(path, sheet_name=sheet_name, header=None)
+    header = raw.iloc[6].tolist()
+    years = [clean_year(value) for value in header[1:]]
+    records = []
+    for _, row in raw.iloc[8:].iterrows():
+        department = row.iloc[0]
+        if pd.isna(department):
+            continue
+        department_text = str(department).strip()
+        if not department_text or department_text.lower().startswith("nota"):
+            continue
+        for position, year in enumerate(years, start=1):
+            if year is None:
+                continue
+            value = pd.to_numeric(row.iloc[position], errors="coerce")
+            if pd.isna(value):
+                continue
+            records.append(
+                {
+                    "departamento": department_text,
+                    "anio": year,
+                    value_name: value,
+                }
+            )
+    return pd.DataFrame(records)
+
+
+def build_inei_silver() -> int:
+    path = BRONZE_DIR / "inei" / "pbi" / "pbi_peru_16.xlsx"
+    pbi = extract_inei_table(path, "Cuadro1", "pbi_miles_soles_2007")
+    share = extract_inei_table(path, "Cuadro2", "participacion_pbi")
+    growth = extract_inei_table(path, "Cuadro3", "variacion_pbi")
+    result = pbi.merge(share, on=["departamento", "anio"], how="left").merge(
+        growth, on=["departamento", "anio"], how="left"
+    )
+    result.to_csv(SILVER_DIR / "inei_pbi_departamental.csv", index=False, encoding="utf-8-sig")
+    return len(result)
+
+
 def download_mef() -> dict:
     params = {
         "resource_id": MEF_BALANCE_EMPRESAS_ESTADO_RESOURCE_ID,
@@ -200,6 +335,36 @@ def download_mef() -> dict:
         "bytes": len(response.content),
         "status": "ok",
     }
+
+
+def build_mef_silver() -> int:
+    path = SILVER_DIR / "mef_balance_empresas_estado_sample.csv"
+    mef = pd.read_csv(path)
+    amount_cols = [column for column in mef.columns if column.startswith("MONTO")]
+    mef = to_numeric_columns(mef, amount_cols)
+    for column in ["ANO_EJE", "MES_EJE"]:
+        if column in mef.columns:
+            mef[column] = pd.to_numeric(mef[column], errors="coerce")
+    group_cols = [
+        "ANO_EJE",
+        "MES_EJE",
+        "DEPARTAMENTO_EJECUTORA_NOMBRE",
+        "PROVINCIA_EJECUTORA_NOMBRE",
+        "ENTIDAD",
+        "ENTIDAD_NOMBRE",
+        "NIVEL_NOMBRE",
+        "RUBRO_NOMBRE",
+    ]
+    group_cols = [column for column in group_cols if column in mef.columns]
+    amount = "MONTO4" if "MONTO4" in mef.columns else amount_cols[0]
+    result = (
+        mef.groupby(group_cols, dropna=False)
+        .agg(monto_total=(amount, "sum"), registros=(amount, "size"))
+        .reset_index()
+    )
+    result.columns = [column.lower() for column in result.columns]
+    result.to_csv(SILVER_DIR / "mef_empresas_estado_resumen.csv", index=False, encoding="utf-8-sig")
+    return len(result)
 
 
 def build_bvl_silver() -> int:
@@ -231,7 +396,72 @@ def build_bvl_silver() -> int:
         index=False,
         encoding="utf-8-sig",
     )
+    build_bvl_market_snapshot(rows)
     return len(rows)
+
+
+def parse_decimal(text: str) -> float | None:
+    cleaned = (
+        str(text)
+        .replace("US$", "")
+        .replace("S/", "")
+        .replace("%", "")
+        .replace(",", "")
+        .strip()
+    )
+    try:
+        return float(cleaned)
+    except ValueError:
+        return None
+
+
+def build_bvl_market_snapshot(rows: list[dict]) -> int:
+    records = []
+    values = [row["values"] for row in rows]
+    for value in values:
+        parts = [part.strip() for part in value.split("|")]
+        if len(parts) >= 5 and parts[0].startswith("MSCI"):
+            records.append(
+                {
+                    "categoria": "indice",
+                    "nombre": parts[0],
+                    "valor_1": parse_decimal(parts[1]),
+                    "valor_2": parse_decimal(parts[2]),
+                    "valor_3": parse_decimal(parts[3]),
+                    "valor_4": parse_decimal(parts[4]),
+                    "raw": value,
+                }
+            )
+        elif value.startswith("Subieron:"):
+            records.append(
+                {
+                    "categoria": "amplitud_mercado",
+                    "nombre": "subieron_bajaron_mantuvieron",
+                    "valor_1": parse_decimal(parts[1]) if len(parts) > 1 else None,
+                    "valor_2": parse_decimal(parts[3]) if len(parts) > 3 else None,
+                    "valor_3": parse_decimal(parts[5]) if len(parts) > 5 else None,
+                    "valor_4": None,
+                    "raw": value,
+                }
+            )
+        elif len(parts) == 2 and "Capitalizaci" not in value:
+            first = parse_decimal(parts[0])
+            second = parse_decimal(parts[1])
+            if first is not None and second is not None:
+                records.append(
+                    {
+                        "categoria": "capitalizacion",
+                        "nombre": "capitalizacion_total",
+                        "valor_1": first,
+                        "valor_2": second,
+                        "valor_3": None,
+                        "valor_4": None,
+                        "raw": value,
+                    }
+                )
+    snapshot = pd.DataFrame(records)
+    snapshot.to_csv(SILVER_DIR / "bvl_market_snapshot.csv", index=False, encoding="utf-8-sig")
+    return len(snapshot)
 
 
 def run_external_sources() -> dict[str, int]:
@@ -279,8 +509,11 @@ def run_external_sources() -> dict[str, int]:
     coverage.append(bvl)
 
     coverage.extend(download_sbs())
+    build_sbs_silver()
     coverage.append(download_inei())
+    build_inei_silver()
     coverage.append(download_mef())
+    build_mef_silver()
 
     coverage_df = pd.DataFrame(coverage)
     coverage_df.to_csv(GOLD_DIR / "source_coverage.csv", index=False, encoding="utf-8-sig")

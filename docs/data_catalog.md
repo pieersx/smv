@@ -33,6 +33,13 @@
 | `data/gold/fact_macro_bcrp.csv` | Contexto macroeconomico BCRP para dashboard. |
 | `data/gold/dashboard_summary.csv` | Resumen ejecutivo del periodo mas reciente. |
 | `data/gold/source_coverage.csv` | Auditoria de las 6 fuentes del proyecto. |
+| `data/gold/fact_sbs_financial_system.csv` | KPIs del sistema financiero SBS por entidad y periodo. |
+| `data/gold/fact_inei_pbi_department.csv` | PBI departamental INEI estructurado por año. |
+| `data/gold/fact_mef_state_enterprises.csv` | Resumen de empresas del Estado desde Datos Abiertos MEF. |
+| `data/gold/fact_bvl_market_snapshot.csv` | Snapshot bursatil desde boletin diario BVL. |
+| `data/gold/data_profile_tables.csv` | Perfilado de tablas silver/gold. |
+| `data/gold/data_profile_columns.csv` | Perfilado por columna. |
+| `data/gold/data_quality_results.csv` | Resultado de reglas de calidad de datos. |
 
 ## Cobertura de fuentes
 
@@ -44,6 +51,22 @@
 | SBS | Estados financieros del sistema financiero | Fuente complementaria para riesgo financiero sectorial. |
 | INEI | PBI Peru por departamentos/actividades | Fuente complementaria macro/territorial. |
 | MEF / Datos Abiertos | Balance constructivo de empresas del Estado | Fuente complementaria de datos abiertos estatales. |
+
+## Calidad de datos
+
+El pipeline genera reglas de calidad en `data/gold/data_quality_results.csv`:
+
+- Presencia de filas en las tablas gold principales.
+- Llaves de empresa no nulas para SMV.
+- Activos positivos o no negativos segun fuente.
+- Score de riesgo entre 0 y 100.
+- Rangos de años esperados para INEI.
+- Verificacion de seis fuentes oficiales con estado `ok`.
+
+El perfilado de datos queda en:
+
+- `data/gold/data_profile_tables.csv`
+- `data/gold/data_profile_columns.csv`
 
 ## KPIs calculados
 

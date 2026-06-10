@@ -69,13 +69,26 @@ La app Streamlit incluye cuatro vistas:
 - Radar de riesgo.
 - Analisis sectorial.
 - Contexto macro BCRP.
+- Fuentes externas: SBS, INEI, MEF y BVL.
+- Calidad de datos y profiling.
+- Cobertura de fuentes.
 - Tabla gold exportable.
 
 ## Alcance actual
 
 El pipeline descarga datos 2019-2024 de informacion financiera individual de la SMV, calcula ratios financieros, arma un score de riesgo y genera tablas gold para el dashboard.
 
-El dashboard principal usa SMV + BCRP. BVL, SBS, INEI y MEF quedan materializados como fuentes complementarias auditadas en `data/gold/source_coverage.csv`; su integracion analitica profunda es la siguiente mejora.
+El dashboard principal usa SMV + BCRP para el riesgo corporativo. Ademas, BVL, SBS, INEI y MEF se descargan, se transforman a silver/gold y se muestran como fuentes externas complementarias. La auditoria general queda en `data/gold/source_coverage.csv`.
+
+## Calidad de datos
+
+El pipeline genera:
+
+- `data/gold/data_profile_tables.csv`
+- `data/gold/data_profile_columns.csv`
+- `data/gold/data_quality_results.csv`
+
+Estos archivos permiten sustentar completitud, nulos, duplicados, tipos de datos y reglas minimas de validacion.
 
 ## Documentacion
 

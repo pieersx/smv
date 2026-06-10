@@ -158,6 +158,35 @@ def build_gold() -> dict[str, pd.DataFrame]:
         bcrp.to_csv(GOLD_DIR / "fact_macro_bcrp.csv", index=False, encoding="utf-8-sig")
         outputs["fact_macro_bcrp"] = bcrp
 
+    external_outputs = build_external_gold()
+    outputs.update(external_outputs)
+
+    return outputs
+
+
+def copy_silver_to_gold(silver_name: str, gold_name: str) -> pd.DataFrame | None:
+    path = SILVER_DIR / silver_name
+    if not path.exists():
+        return None
+    df = pd.read_csv(path, low_memory=False)
+    df.to_csv(GOLD_DIR / gold_name, index=False, encoding="utf-8-sig")
+    return df
+
+
+def build_external_gold() -> dict[str, pd.DataFrame]:
+    outputs: dict[str, pd.DataFrame] = {}
+
+    mappings = {
+        "sbs_financial_system_kpis.csv": "fact_sbs_financial_system.csv",
+        "inei_pbi_departamental.csv": "fact_inei_pbi_department.csv",
+        "mef_empresas_estado_resumen.csv": "fact_mef_state_enterprises.csv",
+        "bvl_market_snapshot.csv": "fact_bvl_market_snapshot.csv",
+    }
+    for silver_name, gold_name in mappings.items():
+        df = copy_silver_to_gold(silver_name, gold_name)
+        if df is not None:
+            outputs[gold_name.removesuffix(".csv")] = df
+
     return outputs
 
 
