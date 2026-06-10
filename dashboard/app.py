@@ -10,18 +10,20 @@ GOLD = ROOT / "data" / "gold"
 
 
 @st.cache_data
-def load_data() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+def load_data() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     kpis = pd.read_csv(GOLD / "fact_financial_kpis.csv")
     sector = pd.read_csv(GOLD / "fact_sector_risk.csv")
     summary = pd.read_csv(GOLD / "dashboard_summary.csv")
     macro = pd.read_csv(GOLD / "fact_macro_bcrp.csv", parse_dates=["fecha"])
-    return kpis, sector, summary, macro
+    coverage_path = GOLD / "source_coverage.csv"
+    coverage = pd.read_csv(coverage_path) if coverage_path.exists() else pd.DataFrame()
+    return kpis, sector, summary, macro, coverage
 
 
 st.set_page_config(page_title="SMV 360", layout="wide")
 st.title("SMV 360 - Riesgo financiero corporativo")
 
-kpis, sector, summary, macro = load_data()
+kpis, sector, summary, macro, coverage = load_data()
 
 periods = (
     kpis[["ejercicio", "periodo", "periodo_orden", "periodo_label"]]
@@ -48,8 +50,8 @@ col2.metric("Score promedio", f"{view['score_riesgo'].mean():.2f}")
 col3.metric("Riesgo alto", f"{(view['nivel_riesgo'] == 'Alto').sum():,.0f}")
 col4.metric("Periodo base", str(summary_now["periodo_actual"]))
 
-tab_risk, tab_sector, tab_macro, tab_table = st.tabs(
-    ["Radar de riesgo", "Analisis sectorial", "Contexto macro", "Tabla gold"]
+tab_risk, tab_sector, tab_macro, tab_sources, tab_table = st.tabs(
+    ["Radar de riesgo", "Analisis sectorial", "Contexto macro", "Fuentes", "Tabla gold"]
 )
 
 with tab_risk:
@@ -165,6 +167,18 @@ with tab_macro:
         title="Riesgo financiero vs variables macro promedio anual",
     )
     st.plotly_chart(fig, use_container_width=True)
+
+with tab_sources:
+    st.subheader("Cobertura de fuentes oficiales")
+    if coverage.empty:
+        st.info("Ejecuta `python -m src.smv_bi.run_pipeline` para generar source_coverage.csv.")
+    else:
+        st.metric("Fuentes verificadas", coverage["source"].nunique())
+        st.dataframe(
+            coverage[["source", "dataset", "records", "status", "url"]],
+            use_container_width=True,
+            hide_index=True,
+        )
 
 with tab_table:
     st.subheader("Tabla gold")

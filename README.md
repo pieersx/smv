@@ -43,6 +43,10 @@ src/
 
 - SMV principales cuentas financieras: `https://mvnet.smv.gob.pe/ws_OD_EEFF/WebServiceInfoFinanciera.asmx/obtener_EFData`
 - BCRP API de series estadisticas: `https://estadisticas.bcrp.gob.pe/estadisticas/series/api/`
+- BVL boletin diario: `https://documents.bvl.com.pe/pubdif/boldia/bolres.htm`
+- SBS datos abiertos: `https://www.sbs.gob.pe/estadisticas-y-publicaciones/estadisticas-/datos-abiertos_`
+- INEI PBI Peru: `https://www.inei.gob.pe/media/MenuRecursivo/indices_tematicos/pbi_peru_16.xlsx`
+- MEF / Datos Abiertos: `https://api.datosabiertos.mef.gob.pe/DatosAbiertos/v1/datastore_search`
 
 ## Ejecutar
 
@@ -71,7 +75,7 @@ La app Streamlit incluye cuatro vistas:
 
 El pipeline descarga datos 2019-2024 de informacion financiera individual de la SMV, calcula ratios financieros, arma un score de riesgo y genera tablas gold para el dashboard.
 
-La BVL y SBS quedan como ampliacion recomendada despues de estabilizar esta primera version, porque SMV + BCRP ya cubren un caso BI completo y defendible.
+El dashboard principal usa SMV + BCRP. BVL, SBS, INEI y MEF quedan materializados como fuentes complementarias auditadas en `data/gold/source_coverage.csv`; su integracion analitica profunda es la siguiente mejora.
 
 ## Documentacion
 

@@ -26,3 +26,15 @@ BCRP_SERIES = {
 
 BCRP_START = "2019-01-01"
 BCRP_END = "2024-12-31"
+
+BVL_DAILY_SUMMARY_URL = "https://documents.bvl.com.pe/pubdif/boldia/bolres.htm"
+
+SBS_OPEN_DATA = {
+    "sistema_financiero_estado_situacion": "https://www.sbs.gob.pe/Portals/0/jer/Datos%20Abiertos/v3/ESF_SF.zip",
+    "sistema_financiero_estado_resultados": "https://www.sbs.gob.pe/Portals/0/jer/Datos%20Abiertos/v3/ER_SF.zip",
+}
+
+INEI_PBI_PERU_URL = "https://www.inei.gob.pe/media/MenuRecursivo/indices_tematicos/pbi_peru_16.xlsx"
+
+MEF_BALANCE_EMPRESAS_ESTADO_RESOURCE_ID = "96ac0c23-abbc-4e28-b9f1-7977826f534b"
+MEF_DATASTORE_URL = "https://api.datosabiertos.mef.gob.pe/DatosAbiertos/v1/datastore_search"
